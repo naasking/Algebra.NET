@@ -187,7 +187,7 @@ namespace AlgebraDotNet
         public Function<T> Rewrite(int rounds, params Identity[] equalities)
         {
             // rewriting
-            // continue looping until we reach a fixed point, ie. expression of last loop == this loop expression
+            // continue looping until we reach a fixed point, ie. term of last loop == this loop's term
             Term last, current = Body;
             // allocate enough space for all possible variables
             var bindings = new Term[Math.Max(Body.nextVar, equalities.Max(x => (int?)x.left.nextVar) ?? 0)];
@@ -224,7 +224,7 @@ namespace AlgebraDotNet
             return !(left == right);
         }
         /// <summary>
-        /// Implicit convert an expression to the expected function type.
+        /// Implicit convert a term to the expected function type.
         /// </summary>
         /// <param name="body"></param>
         /// <returns></returns>
@@ -254,7 +254,7 @@ namespace AlgebraDotNet
         public Identity(Term left, Term right)
         {
             if (left.nextVar != right.nextVar)
-                throw new ArgumentException("The number of variables in each expression must be equal.");
+                throw new ArgumentException("The number of variables in each term must be equal.");
             this.left = left;
             this.right = right;
         }
@@ -270,15 +270,15 @@ namespace AlgebraDotNet
     }
 
     /// <summary>
-    /// The expression node type.
+    /// The term node type.
     /// </summary>
-    public enum NodeType
+    public enum TermType
     {
         Add, Sub, Mul, Div, Pow, Neg, Const, Var
     }
 
     /// <summary>
-    /// A variable used to define an expression.
+    /// A variable used to define an term.
     /// </summary>
     public class Variable : Term
     {
@@ -288,7 +288,7 @@ namespace AlgebraDotNet
         //FIXME: 1 + index just checks the max variable used, it doesn't ensure that all variables are used
         //Perhaps use a 64-bit bitmap supporting a max of 64 variables?
         internal Variable(string name, int index)
-            : base(NodeType.Var, 1 + index)
+            : base(TermType.Var, 1 + index)
         {
             this.name = name;
             this.index = index;
@@ -314,14 +314,14 @@ namespace AlgebraDotNet
     }
 
     /// <summary>
-    /// A numerical expression.
+    /// A numerical term.
     /// </summary>
     public abstract class Term
     {
-        protected internal NodeType type;
+        protected internal TermType type;
         protected internal int nextVar;
 
-        protected Term(NodeType type, int nextVar)
+        protected Term(TermType type, int nextVar)
         {
             this.type = type;
             this.nextVar = nextVar;
@@ -333,7 +333,7 @@ namespace AlgebraDotNet
             internal Term right;
             static MethodInfo pow = typeof(Math).GetMethod("Pow", new[] { typeof(double), typeof(double) });
 
-            public Binary(NodeType type, Term left, Term right)
+            public Binary(TermType type, Term left, Term right)
                 : base(type, Math.Max(left.nextVar, right.nextVar))
             {
                 this.left = left;
@@ -346,11 +346,11 @@ namespace AlgebraDotNet
                 right.Compile(il);
                 switch (type)
                 {
-                    case NodeType.Add: il.Emit(OpCodes.Add); break;
-                    case NodeType.Div: il.Emit(OpCodes.Div); break;
-                    case NodeType.Pow: il.Emit(OpCodes.Call, pow); break;
-                    case NodeType.Mul: il.Emit(OpCodes.Mul); break;
-                    case NodeType.Sub: il.Emit(OpCodes.Sub); break;
+                    case TermType.Add: il.Emit(OpCodes.Add); break;
+                    case TermType.Div: il.Emit(OpCodes.Div); break;
+                    case TermType.Pow: il.Emit(OpCodes.Call, pow); break;
+                    case TermType.Mul: il.Emit(OpCodes.Mul); break;
+                    case TermType.Sub: il.Emit(OpCodes.Sub); break;
                     default:
                         throw new NotSupportedException("Unknown operator: " + type);
                 }
@@ -382,22 +382,22 @@ namespace AlgebraDotNet
                 char op;
                 switch (type)
                 {
-                    case NodeType.Add: op = '+'; break;
-                    case NodeType.Div: op = '/'; break;
-                    case NodeType.Mul: op = '*'; break;
-                    case NodeType.Pow: op = '^'; break;
-                    case NodeType.Sub: op = '-'; break;
+                    case TermType.Add: op = '+'; break;
+                    case TermType.Div: op = '/'; break;
+                    case TermType.Mul: op = '*'; break;
+                    case TermType.Pow: op = '^'; break;
+                    case TermType.Sub: op = '-'; break;
                     default:
                         throw new NotSupportedException("Unknown type: " + type);
                 }
-                return '(' + left.ToString() + ' ' + op + (type == NodeType.Pow ? " (" + right.ToString() + "))" : ' ' + right.ToString() + ')');
+                return '(' + left.ToString() + ' ' + op + (type == TermType.Pow ? " (" + right.ToString() + "))" : ' ' + right.ToString() + ')');
             }
         }
 
         sealed class Const : Term
         {
             internal double value;
-            public Const(double value) : base(NodeType.Const, 0)
+            public Const(double value) : base(TermType.Const, 0)
             {
                 this.value = value;
             }
@@ -411,7 +411,7 @@ namespace AlgebraDotNet
             }
             protected internal override bool TryUnify(Term e, Term[] bindings)
             {
-                return e.type == NodeType.Const && value == (e as Const).value;
+                return e.type == TermType.Const && value == (e as Const).value;
             }
             public override string ToString()
             {
@@ -427,14 +427,14 @@ namespace AlgebraDotNet
         internal protected abstract void Compile(ILGenerator il);
 
         /// <summary>
-        /// Replace the existing expression with the given bindings.
+        /// Replace the existing term with the given bindings.
         /// </summary>
         /// <param name="bindings"></param>
         /// <returns></returns>
         internal protected abstract Term Subsitute(Term[] bindings);
 
         /// <summary>
-        /// Attempt to unify this expression with the given expression.
+        /// Attempt to unify this term with the given term.
         /// </summary>
         /// <param name="e"></param>
         /// <param name="bindings"></param>
@@ -442,7 +442,7 @@ namespace AlgebraDotNet
         internal protected abstract bool TryUnify(Term e, Term[] bindings);
 
         /// <summary>
-        /// Rewrite the current expression with the given equality.
+        /// Rewrite the current term with the given equality.
         /// </summary>
         /// <param name="e"></param>
         /// <param name="bindings"></param>
@@ -460,7 +460,7 @@ namespace AlgebraDotNet
         /// <returns></returns>
         public Term Add(Term right)
         {
-            return new Binary(NodeType.Add, this, right);
+            return new Binary(TermType.Add, this, right);
         }
 
         /// <summary>
@@ -470,7 +470,7 @@ namespace AlgebraDotNet
         /// <returns></returns>
         public Term Subtract(Term right)
         {
-            return new Binary(NodeType.Sub, this, right);
+            return new Binary(TermType.Sub, this, right);
         }
 
         /// <summary>
@@ -480,7 +480,7 @@ namespace AlgebraDotNet
         /// <returns></returns>
         public Term Multiply(Term right)
         {
-            return new Binary(NodeType.Mul, this, right);
+            return new Binary(TermType.Mul, this, right);
         }
         
         /// <summary>
@@ -490,21 +490,21 @@ namespace AlgebraDotNet
         /// <returns></returns>
         public Term Divide(Term right)
         {
-            return new Binary(NodeType.Div, this, right);
+            return new Binary(TermType.Div, this, right);
         }
 
         /// <summary>
-        /// Raise the current expression to the power of <paramref name="exponent"/>.
+        /// Raise the current term to the power of <paramref name="exponent"/>.
         /// </summary>
         /// <param name="exponent"></param>
         /// <returns></returns>
         public Term Pow(Term exponent)
         {
-            return new Binary(NodeType.Pow, this, exponent);
+            return new Binary(TermType.Pow, this, exponent);
         }
         
         /// <summary>
-        /// Negate the current expression.
+        /// Negate the current term.
         /// </summary>
         /// <returns></returns>
         public virtual Term Negate()
@@ -513,7 +513,7 @@ namespace AlgebraDotNet
         }
         
         /// <summary>
-        /// Construct an expression encapsulating a constant.
+        /// Construct an term encapsulating a constant.
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
@@ -523,14 +523,14 @@ namespace AlgebraDotNet
         }
 
         /// <summary>
-        /// Generate a string representation of the expression.
+        /// Generate a string representation of the term.
         /// </summary>
         /// <returns></returns>
         public abstract override string ToString();
 
         #region Operators
         /// <summary>
-        /// Create an expression encapsulating a double.
+        /// Create an term encapsulating a double.
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
@@ -562,7 +562,7 @@ namespace AlgebraDotNet
         }
 
         /// <summary>
-        /// Negate an expression.
+        /// Negate an term.
         /// </summary>
         /// <param name="x"></param>
         /// <returns></returns>

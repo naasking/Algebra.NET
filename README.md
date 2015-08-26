@@ -46,11 +46,11 @@ I then perform unification on the left hand side, and generate a set of
 substitutions to transform the matching term into the right hand side
 of the identity.
 
-It was ultimately quite simple, consisting of 3 methods on Expression:
+It was ultimately quite simple, consisting of 3 methods on Term:
 
+	Expression Rewrite(Identity e, Expression[] bindings)
     bool TryUnify(Expression e, Expression[] bindings)
     Expression Subsitute(Expression[] bindings)
-	Expression Rewrite(Identity e, Expression[] bindings)
 
 Rewrite tries to recursively unify the Identity's left hand side with
 the current term using TryUnify. On success, the 'bindings' array
