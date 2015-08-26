@@ -48,9 +48,9 @@ of the identity.
 
 It was ultimately quite simple, consisting of 3 methods on Term:
 
-	Expression Rewrite(Identity e, Expression[] bindings)
-    bool TryUnify(Expression e, Expression[] bindings)
-    Expression Subsitute(Expression[] bindings)
+	Term Rewrite(Identity e, Term[] bindings)
+    bool TryUnify(Term e, Term[] bindings)
+    Term Subsitute(Term[] bindings)
 
 Rewrite tries to recursively unify the Identity's left hand side with
 the current term using TryUnify. On success, the 'bindings' array
