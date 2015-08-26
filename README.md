@@ -2,7 +2,7 @@
 
 This is a simple algebra library designed to facility easy expression
 and manipulation of algebraic functions. For instance, here's a simple
-function that increments a variable by 1:
+function:
 
     Function<Func<double, double>> a = Algebra.Function(x => 2 * x + 1);
 
