@@ -144,7 +144,7 @@ namespace Newton
         /// Compile the numerical function into a delegate.
         /// </summary>
         /// <param name="name">The internal delegate name.</param>
-        /// <returns></returns>
+        /// <returns>A compiled delegate for the expression.</returns>
         public T Compile(string name)
         {
             // assumes that # generic arguments = # parameters + 1, ie. Func<arg0, arg1, returnType>

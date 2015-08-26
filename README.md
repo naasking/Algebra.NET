@@ -21,6 +21,18 @@ Or we can apply some algebraic identities to rewrite it:
 	// ((2 * x) + 1)
 	// (1 + (x + x))
 
+Rewrites can sometimes loop forever, so the Rewrite method takes a
+number indicating the maximum number of iterations to perform.
+
+All the usual arithemtic operations are available, including an
+extension method that provides exponentiation:
+
+    var f = Algebra.Function(x => x.Pow(3));
+	Console.WriteLine(x);
+
+	// Prints:
+	// (x ^ (3))
+
 # Future Work
 
  * expression simplification
