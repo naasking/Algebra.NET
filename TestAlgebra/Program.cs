@@ -93,6 +93,16 @@ namespace TestAlgebra
             Debug.Assert(f.Rewrite(2, eq).ToString() == "((x + 1) ^ (2))");
         }
 
+        static void ReadmeSample()
+        {
+            var f = Algebra.Function(x => 2 * x + 1);
+            Identity associative = Algebra.Identity(x => x + 1 == 1 + x);
+            Identity mulEqAdd = Algebra.Identity(x => 2 * x == x + x);
+            Debug.Assert(f.Rewrite() == f);
+            Debug.Assert(f.ToString() == "((2 * x) + 1)");
+            Debug.Assert(f.Rewrite(1, associative, mulEqAdd).ToString() == "(1 + (x + x))");
+        }
+
         static void Main(string[] args)
         {
             Plus1();
@@ -104,6 +114,7 @@ namespace TestAlgebra
             Factor();
             Negate();
             Pow();
+            ReadmeSample();
 
             Console.WriteLine("Tests complete...");
             Console.ReadLine();
