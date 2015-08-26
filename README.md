@@ -60,8 +60,10 @@ generate the new term.
 
 There are only 3 term types: constants, variables and binary
 operations. Negation is handled as a binary operation "0 - x" for
-simplicity. So if you want to understand expression compilation to
-CIL, unification, or term rewriting, this is pretty much as simple
+simplicity.
+
+So if you want to understand expression compilation to CIL,
+unification, or term rewriting, this is pretty much as simple
 as it gets.
 
 Algebra.NET doesn't perform any term simplification at this point,
