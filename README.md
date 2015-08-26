@@ -54,8 +54,8 @@ It was ultimately quite simple, consisting of 3 methods on Term:
 
 Rewrite tries to recursively unify the Identity's left hand side with
 the current term using TryUnify. On success, the 'bindings' array
-will have ebeen populated with the substitutions to perform, so
-it substitutes the bindings into the identity's right hand side to
+will have been populated by TryUnify with the substitutions to perform,
+so it substitutes the bindings into the identity's right hand side to
 generate the new term.
 
 There are only 3 term types: constants, variables and binary
