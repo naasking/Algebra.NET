@@ -6,7 +6,7 @@ function that increments a variable by 1:
 
     Function<Func<double, double>> a = Algebra.Function(x => 2 * x + 1);
 
-Now we can compile it to efficient IL:
+We can compile such a function to efficient IL:
 
     Func<double, double> func = a.Compile("times2plus1");
 
@@ -24,7 +24,7 @@ Or we can apply some algebraic identities to rewrite it:
 Rewrites can sometimes loop forever, so the Rewrite method takes a
 number indicating the maximum number of iterations to perform.
 
-All the usual arithemtic operations are available, including an
+All the usual arithmetic operations are available, including an
 extension method that provides exponentiation:
 
     var f = Algebra.Function(x => x.Pow(3));
@@ -37,6 +37,7 @@ extension method that provides exponentiation:
 
  * expression simplification
  * automatic and symbolic differentiation
+ * nested function calls?
 
 # License
 
