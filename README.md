@@ -10,7 +10,7 @@ Now we can compile it to efficient IL:
 
     Func<double, double> func = a.Compile("times2plus1");
 
-Or we can apply some algebraic identities to it to rewrite it:
+Or we can apply some algebraic identities to rewrite it:
 
     Identity associative = Algebra.Identity(x => x + 1 == 1 + x);
     Identity mulEqAdd = Algebra.Identity(x => 2 * x == x + x);
