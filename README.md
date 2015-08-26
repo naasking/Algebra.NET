@@ -33,6 +33,41 @@ extension method for exponentiation:
 	// Prints:
 	// (x ^ (3))
 
+# Design
+
+It's a nice, functional example of a simple term rewriting system. Term
+rewriting is usually pretty awkward in an object-oriented language,
+and I banged my head against the keyboard to figure out a nice
+way to do it, until I hit on just doing unification (of course!).
+
+So I reused the term language and added an equality operator to
+generate an identity that conceptually maps one term to another.
+I then perform unification on the left hand side, and generate a set of
+substitutions to transform the matching term into the right hand side
+of the identity.
+
+It was ultimately quite simple, consisting of 3 methods on Expression:
+
+    bool TryUnify(Expression e, Expression[] bindings)
+    Expression Subsitute(Expression[] bindings)
+	Expression Rewrite(Identity e, Expression[] bindings)
+
+Rewrite tries to recursively unify the Identity's left hand side with
+the current term using TryUnify. On success, the 'bindings' array
+will have ebeen populated with the substitutions to perform, so
+it substitutes the bindings into the identity's right hand side to
+generate the new term.
+
+There are only 3 term types: constants, variables and binary
+operations. Negation is handled as a binary operation "0 - x" for
+simplicity. So if you want to understand expression compilation to
+CIL, unification, or term rewriting, this is pretty much as simple
+as it gets.
+
+Algebra.NET doesn't perform any term simplification at this point,
+only term rewriting. Some rewrites may of course be simplifications,
+but a term like "0 - 3" will not be simplified to "-3".
+
 # Future Work
 
  * expression simplification

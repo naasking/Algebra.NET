@@ -5,7 +5,7 @@ using System.Text;
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace Newton
+namespace AlgebraDotNet
 {
     /// <summary>
     /// Defines methods for constructing algebraic functions and algebraic equalities.
@@ -125,9 +125,9 @@ namespace Newton
         /// </summary>
         /// <param name="body">The function body.</param>
         /// <returns>A function.</returns>
-        public static Expression Pow(this double x, double exponent)
+        public static Term Pow(this double x, double exponent)
         {
-            return Expression.Constant(x).Pow(exponent);
+            return Term.Constant(x).Pow(exponent);
         }
     }
 
@@ -138,7 +138,7 @@ namespace Newton
     public struct Function<T> : IEquatable<Function<T>>
         where T : class
     {
-        internal Expression Body { get; set; }
+        internal Term Body { get; set; }
 
         /// <summary>
         /// Compile the numerical function into a delegate.
@@ -188,9 +188,9 @@ namespace Newton
         {
             // rewriting
             // continue looping until we reach a fixed point, ie. expression of last loop == this loop expression
-            Expression last, current = Body;
+            Term last, current = Body;
             // allocate enough space for all possible variables
-            var bindings = new Expression[Math.Max(Body.nextVar, equalities.Max(x => (int?)x.left.nextVar) ?? 0)];
+            var bindings = new Term[Math.Max(Body.nextVar, equalities.Max(x => (int?)x.left.nextVar) ?? 0)];
             do
             {
                 // apply every equality to rewrite the term
@@ -228,7 +228,7 @@ namespace Newton
         /// </summary>
         /// <param name="body"></param>
         /// <returns></returns>
-        public static implicit operator Function<T>(Expression body)
+        public static implicit operator Function<T>(Term body)
         {
             return new Function<T> { Body = body };
         }
@@ -245,13 +245,13 @@ namespace Newton
     }
 
     /// <summary>
-    /// Defines an equality between two expressions.
+    /// Defines an equality between two terms.
     /// </summary>
     public struct Identity
     {
-        internal Expression left;
-        internal Expression right;
-        public Identity(Expression left, Expression right)
+        internal Term left;
+        internal Term right;
+        public Identity(Term left, Term right)
         {
             if (left.nextVar != right.nextVar)
                 throw new ArgumentException("The number of variables in each expression must be equal.");
@@ -280,7 +280,7 @@ namespace Newton
     /// <summary>
     /// A variable used to define an expression.
     /// </summary>
-    public class Variable : Expression
+    public class Variable : Term
     {
         internal string name;
         internal int index;
@@ -298,11 +298,11 @@ namespace Newton
         {
             il.Emit(OpCodes.Ldarg, index);
         }
-        protected internal override Expression Subsitute(Expression[] subs)
+        protected internal override Term Subsitute(Term[] subs)
         {
             return subs[index];
         }
-        protected internal override bool TryUnify(Expression e, Expression[] bindings)
+        protected internal override bool TryUnify(Term e, Term[] bindings)
         {
             bindings[index] = e;
             return true;
@@ -316,24 +316,24 @@ namespace Newton
     /// <summary>
     /// A numerical expression.
     /// </summary>
-    public abstract class Expression
+    public abstract class Term
     {
         protected internal NodeType type;
         protected internal int nextVar;
 
-        protected Expression(NodeType type, int nextVar)
+        protected Term(NodeType type, int nextVar)
         {
             this.type = type;
             this.nextVar = nextVar;
         }
 
-        sealed class Binary : Expression
+        sealed class Binary : Term
         {
-            internal Expression left;
-            internal Expression right;
+            internal Term left;
+            internal Term right;
             static MethodInfo pow = typeof(Math).GetMethod("Pow", new[] { typeof(double), typeof(double) });
 
-            public Binary(NodeType type, Expression left, Expression right)
+            public Binary(NodeType type, Term left, Term right)
                 : base(type, Math.Max(left.nextVar, right.nextVar))
             {
                 this.left = left;
@@ -356,19 +356,19 @@ namespace Newton
                 }
             }
 
-            protected internal override Expression Subsitute(Expression[] subs)
+            protected internal override Term Subsitute(Term[] subs)
             {
                 return new Binary(type, left.Subsitute(subs), right.Subsitute(subs));
             }
 
-            protected internal override bool TryUnify(Expression e, Expression[] bindings)
+            protected internal override bool TryUnify(Term e, Term[] bindings)
             {
                 if (e.type != type) return false;
                 var eb = e as Binary;
                 return left.TryUnify(eb.left, bindings) && right.TryUnify(eb.right, bindings);
             }
 
-            protected internal override Expression Rewrite(Identity e, Expression[] bindings)
+            protected internal override Term Rewrite(Identity e, Term[] bindings)
             {
                 var nleft = left.Rewrite(e, bindings);
                 var nright = right.Rewrite(e, bindings);
@@ -394,7 +394,7 @@ namespace Newton
             }
         }
 
-        sealed class Const : Expression
+        sealed class Const : Term
         {
             internal double value;
             public Const(double value) : base(NodeType.Const, 0)
@@ -405,11 +405,11 @@ namespace Newton
             {
                 il.Emit(OpCodes.Ldc_R8, value);
             }
-            protected internal override Expression Subsitute(Expression[] subs)
+            protected internal override Term Subsitute(Term[] subs)
             {
                 return this;
             }
-            protected internal override bool TryUnify(Expression e, Expression[] bindings)
+            protected internal override bool TryUnify(Term e, Term[] bindings)
             {
                 return e.type == NodeType.Const && value == (e as Const).value;
             }
@@ -431,7 +431,7 @@ namespace Newton
         /// </summary>
         /// <param name="bindings"></param>
         /// <returns></returns>
-        internal protected abstract Expression Subsitute(Expression[] bindings);
+        internal protected abstract Term Subsitute(Term[] bindings);
 
         /// <summary>
         /// Attempt to unify this expression with the given expression.
@@ -439,7 +439,7 @@ namespace Newton
         /// <param name="e"></param>
         /// <param name="bindings"></param>
         /// <returns></returns>
-        internal protected abstract bool TryUnify(Expression e, Expression[] bindings);
+        internal protected abstract bool TryUnify(Term e, Term[] bindings);
 
         /// <summary>
         /// Rewrite the current expression with the given equality.
@@ -447,48 +447,48 @@ namespace Newton
         /// <param name="e"></param>
         /// <param name="bindings"></param>
         /// <returns></returns>
-        internal protected virtual Expression Rewrite(Identity e, Expression[] bindings)
+        internal protected virtual Term Rewrite(Identity e, Term[] bindings)
         {
             return e.left.TryUnify(this, bindings) ?  e.right.Subsitute(bindings) : this;
         }
         #endregion
 
         /// <summary>
-        /// Add two expressions.
+        /// Add two terms.
         /// </summary>
         /// <param name="right"></param>
         /// <returns></returns>
-        public Expression Add(Expression right)
+        public Term Add(Term right)
         {
             return new Binary(NodeType.Add, this, right);
         }
 
         /// <summary>
-        /// Subtract two expressions.
+        /// Subtract two terms.
         /// </summary>
         /// <param name="right"></param>
         /// <returns></returns>
-        public Expression Subtract(Expression right)
+        public Term Subtract(Term right)
         {
             return new Binary(NodeType.Sub, this, right);
         }
 
         /// <summary>
-        /// Multiply two expressions.
+        /// Multiply two terms.
         /// </summary>
         /// <param name="right"></param>
         /// <returns></returns>
-        public Expression Multiply(Expression right)
+        public Term Multiply(Term right)
         {
             return new Binary(NodeType.Mul, this, right);
         }
         
         /// <summary>
-        /// Divide two expressions.
+        /// Divide two terms.
         /// </summary>
         /// <param name="right"></param>
         /// <returns></returns>
-        public Expression Divide(Expression right)
+        public Term Divide(Term right)
         {
             return new Binary(NodeType.Div, this, right);
         }
@@ -498,7 +498,7 @@ namespace Newton
         /// </summary>
         /// <param name="exponent"></param>
         /// <returns></returns>
-        public Expression Pow(Expression exponent)
+        public Term Pow(Term exponent)
         {
             return new Binary(NodeType.Pow, this, exponent);
         }
@@ -507,7 +507,7 @@ namespace Newton
         /// Negate the current expression.
         /// </summary>
         /// <returns></returns>
-        public virtual Expression Negate()
+        public virtual Term Negate()
         {
             return new Const(0) - this;
         }
@@ -517,7 +517,7 @@ namespace Newton
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
-        public static Expression Constant(double value)
+        public static Term Constant(double value)
         {
             return new Const(value);
         }
@@ -534,29 +534,29 @@ namespace Newton
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
-        public static implicit operator Expression(double value)
+        public static implicit operator Term(double value)
         {
             return Constant(value);
         }
         
         /// <summary>
-        /// Add two expressions.
+        /// Add two terms.
         /// </summary>
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns></returns>
-        public static Expression operator +(Expression left, Expression right)
+        public static Term operator +(Term left, Term right)
         {
             return left.Add(right);
         }
 
         /// <summary>
-        /// Subtract two expressions.
+        /// Subtract two terms.
         /// </summary>
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns></returns>
-        public static Expression operator -(Expression left, Expression right)
+        public static Term operator -(Term left, Term right)
         {
             return left.Subtract(right);
         }
@@ -566,40 +566,40 @@ namespace Newton
         /// </summary>
         /// <param name="x"></param>
         /// <returns></returns>
-        public static Expression operator -(Expression x)
+        public static Term operator -(Term x)
         {
             return x.Negate();
         }
 
         /// <summary>
-        /// Multiply two expressions.
+        /// Multiply two terms.
         /// </summary>
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns></returns>
-        public static Expression operator *(Expression left, Expression right)
+        public static Term operator *(Term left, Term right)
         {
             return left.Multiply(right);
         }
 
         /// <summary>
-        /// Divide two expressions.
+        /// Divide two terms.
         /// </summary>
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns></returns>
-        public static Expression operator /(Expression left, Expression right)
+        public static Term operator /(Term left, Term right)
         {
             return left.Divide(right);
         }
 
         /// <summary>
-        /// Generate an identity between two expressions.
+        /// Generate an identity between two terms.
         /// </summary>
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns></returns>
-        public static Identity operator ==(Expression left, Expression right)
+        public static Identity operator ==(Term left, Term right)
         {
             return new Identity(left, right);
         }
@@ -610,7 +610,7 @@ namespace Newton
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns></returns>
-        public static Identity operator !=(Expression left, Expression right)
+        public static Identity operator !=(Term left, Term right)
         {
             throw new NotSupportedException("Inequalities not supported.");
         }
