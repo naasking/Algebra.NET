@@ -56,6 +56,21 @@ namespace Newton
         /// </summary>
         /// <param name="body">The function body.</param>
         /// <returns>A function.</returns>
+        public static Function<Func<double, double, double, double, double>> Function(Func<Variable, Variable, Variable, Variable, Function<Func<double, double, double, double, double>>> body)
+        {
+            var p = body.Method.GetParameters();
+            var x = new Variable(p[0].Name, 0);
+            var y = new Variable(p[1].Name, 1);
+            var z = new Variable(p[2].Name, 2);
+            var h = new Variable(p[3].Name, 3);
+            return body(x, y, z, h);
+        }
+
+        /// <summary>
+        /// Define a function.
+        /// </summary>
+        /// <param name="body">The function body.</param>
+        /// <returns>A function.</returns>
         public static Identity Identity(Func<Variable, Identity> body)
         {
             var p = body.Method.GetParameters();
@@ -88,6 +103,21 @@ namespace Newton
             var y = new Variable(p[1].Name, 1);
             var z = new Variable(p[2].Name, 2);
             return body(x, y, z);
+        }
+
+        /// <summary>
+        /// Define a function.
+        /// </summary>
+        /// <param name="body">The function body.</param>
+        /// <returns>A function.</returns>
+        public static Identity Equality(Func<Variable, Variable, Variable, Variable, Identity> body)
+        {
+            var p = body.Method.GetParameters();
+            var x = new Variable(p[0].Name, 0);
+            var y = new Variable(p[1].Name, 1);
+            var z = new Variable(p[2].Name, 2);
+            var h = new Variable(p[3].Name, 3);
+            return body(x, y, z, h);
         }
 
         /// <summary>

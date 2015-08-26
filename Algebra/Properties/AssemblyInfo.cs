@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Newton")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Algebra.NET")]
+[assembly: AssemblyDescription("Simple algebraic functions, identities, differentiation, etc.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Newton")]
-[assembly: AssemblyCopyright("Copyright ©  2015")]
+[assembly: AssemblyProduct("Algebra.NET")]
+[assembly: AssemblyCopyright("Copyright Sandro Magi ©  2015")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

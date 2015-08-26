@@ -47,7 +47,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Newton\Algebra.csproj">
+    <ProjectReference Include="..\Algebra\Algebra.csproj">
       <Project>{F6B23193-B541-4B80-9349-D7E9AAAEC159}</Project>
       <Name>Algebra</Name>
     </ProjectReference>
