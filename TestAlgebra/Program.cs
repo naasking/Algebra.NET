@@ -66,7 +66,7 @@ namespace TestAlgebra
             var eq = Algebra.Equality((x, y, z) => z * (x + y) == z * y + z * x);
             var f = Algebra.Function(x => 3 * (x + 1));
             Debug.Assert(f.Rewrite() == f);
-            Debug.Assert(f.Rewrite(1, eq).ToString() == "((3 * 1) + (3 * x))");
+            Debug.Assert(f.Rewrite(1, eq).ToString() == "(3 + (3 * x))");
         }
 
         static void Factor()
@@ -82,12 +82,12 @@ namespace TestAlgebra
             var eq = Algebra.Identity((x, y) => -(x + y) == -x - y);
             var f = Algebra.Function((x, y) => -(3 + x + y));
             Debug.Assert(f.Rewrite() == f);
-            Debug.Assert(f.Rewrite(2, eq).ToString() == "(((0 - 3) - x) - y)");
+            Debug.Assert(f.Rewrite(2, eq).ToString() == "((-3 - x) - y)");
         }
 
         static void Pow()
         {
-            var eq = Algebra.Identity((x, y) => x * x == x.Pow(2));
+            var eq = Algebra.Identity(x => x * x == x.Pow(2));
             var f = Algebra.Function((x, y) => (x + 1) * (x + 1));
             Debug.Assert(f.Rewrite() == f);
             Debug.Assert(f.Rewrite(2, eq).ToString() == "((x + 1) ^ (2))");
@@ -103,6 +103,19 @@ namespace TestAlgebra
             Debug.Assert(f.Rewrite(1, associative, mulEqAdd).ToString() == "(1 + (x + x))");
         }
 
+        static void Simplify()
+        {
+            var f = Algebra.Function(x => 1 + x + 1);
+            Identity associative = Algebra.Identity((x, y, z) => (x + y) + z == x + (y + z));
+            Identity common = Algebra.Identity(x => x + x == 2 * x);
+            Identity factor = Algebra.Identity((x, y) => x * y + x == (y + 1) * x);
+            Identity commute = Algebra.Identity((x, y) => x + y == y + x);
+            Debug.Assert(f.Rewrite() == f);
+            Debug.Assert(f.ToString() == "((1 + x) + 1)");
+            var tmp = f.Rewrite(3, common);
+            Debug.Assert(f.Rewrite(1, commute, associative, common, factor).ToString() == "(x + 2)");
+        }
+
         static void Main(string[] args)
         {
             Plus1();
@@ -115,6 +128,7 @@ namespace TestAlgebra
             Negate();
             Pow();
             ReadmeSample();
+            Simplify();
 
             Console.WriteLine("Tests complete...");
             Console.ReadLine();
