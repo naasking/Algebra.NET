@@ -96,6 +96,20 @@ namespace AlgebraDotNet
         /// </summary>
         /// <param name="body">The function body.</param>
         /// <returns>A function.</returns>
+        public static Identity Identity(Func<Variable, Variable, Variable, Identity> body)
+        {
+            var p = body.Method.GetParameters();
+            var x = new Variable(p[0].Name, 0);
+            var y = new Variable(p[1].Name, 1);
+            var z = new Variable(p[2].Name, 2);
+            return body(x, y, z);
+        }
+
+        /// <summary>
+        /// Define a function.
+        /// </summary>
+        /// <param name="body">The function body.</param>
+        /// <returns>A function.</returns>
         public static Identity Equality(Func<Variable, Variable, Variable, Identity> body)
         {
             var p = body.Method.GetParameters();
@@ -274,7 +288,7 @@ namespace AlgebraDotNet
     /// </summary>
     public enum TermType
     {
-        Add, Sub, Mul, Div, Pow, Sqrt, Const, Var
+        Add, Sub, Mul, Div, Pow, Const, Var
     }
 
     /// <summary>
@@ -370,17 +384,24 @@ namespace AlgebraDotNet
 
             protected internal override Term Rewrite(Identity e, Term[] bindings)
             {
-                Term x = this, last;
-                do
-                {
-                    last = x;
-                    var nleft = left.Rewrite(e, bindings);
-                    var nright = right.Rewrite(e, bindings);
-                    x = ReferenceEquals(nleft, left) && ReferenceEquals(nright, right)
-                         ? base.Rewrite(e, bindings)
-                         : new Binary(type, nleft, nright).Rewrite(e, bindings);
-                } while (!ReferenceEquals(x, last));
-                return x;
+                var nleft = left.Rewrite(e, bindings);
+                var nright = right.Rewrite(e, bindings);
+                return ReferenceEquals(nleft, left) && ReferenceEquals(nright, right)
+                     ? base.Rewrite(e, bindings)
+                     : new Binary(type, nleft, nright).Rewrite(e, bindings);
+                //Binary x = this, last;
+                //do
+                //{
+                //    last = x;
+                //    var nleft = left.Rewrite(e, bindings);
+                //    var nright = right.Rewrite(e, bindings);
+                //    if (ReferenceEquals(nleft, left) && ReferenceEquals(nright, right))
+                //        return base.Rewrite(e, bindings);
+                //    var tmp = new Binary(type, nleft, nright).Rewrite(e, bindings);
+                //    x = tmp as Binary;
+                //    if (ReferenceEquals(x, null)) return tmp;
+                //} while (!ReferenceEquals(x, last));
+                //return x;
             }
 
             public override string ToString()
