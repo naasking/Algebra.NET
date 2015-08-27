@@ -386,16 +386,7 @@ namespace AlgebraDotNet
             {
                 var nleft = left.Subsitute(subs);
                 var nright = right.Subsitute(subs);
-                switch (type)
-                {
-                    case TermType.Add: return nleft + nright;
-                    case TermType.Div: return nleft / nright;
-                    case TermType.Mul: return nleft * nright;
-                    case TermType.Pow: return nleft.Pow(nright);
-                    case TermType.Sub: return nleft - nright;
-                    default:
-                        throw new NotSupportedException("Unknown binary operation: " + type);
-                }
+                return nleft.Operation(type, nright);
             }
 
             protected internal override bool TryUnify(Term e, Term[] bindings)
@@ -411,20 +402,7 @@ namespace AlgebraDotNet
                 var nright = right.Rewrite(e, bindings);
                 return ReferenceEquals(nleft, left) && ReferenceEquals(nright, right)
                      ? base.Rewrite(e, bindings)
-                     : new Binary(type, nleft, nright).Rewrite(e, bindings);
-                //Binary x = this, last;
-                //do
-                //{
-                //    last = x;
-                //    var nleft = left.Rewrite(e, bindings);
-                //    var nright = right.Rewrite(e, bindings);
-                //    if (ReferenceEquals(nleft, left) && ReferenceEquals(nright, right))
-                //        return base.Rewrite(e, bindings);
-                //    var tmp = new Binary(type, nleft, nright).Rewrite(e, bindings);
-                //    x = tmp as Binary;
-                //    if (ReferenceEquals(x, null)) return tmp;
-                //} while (!ReferenceEquals(x, last));
-                //return x;
+                     : nleft.Operation(type, nright).Rewrite(e, bindings);
             }
 
             public override bool Equals(Term other)
@@ -520,6 +498,25 @@ namespace AlgebraDotNet
         /// <param name="other"></param>
         /// <returns></returns>
         public abstract bool Equals(Term other);
+
+        /// <summary>
+        /// Create a binary operation for two terms.
+        /// </summary>
+        /// <param name="right"></param>
+        /// <returns></returns>
+        public Term Operation(TermType operation, Term right)
+        {
+            switch (operation)
+            {
+                case TermType.Add: return this + right;
+                case TermType.Div: return this / right;
+                case TermType.Mul: return this * right;
+                case TermType.Pow: return this.Pow(right);
+                case TermType.Sub: return this - right;
+                default:
+                    throw new NotSupportedException("Unknown binary operation: " + type);
+            }
+        }
 
         /// <summary>
         /// Add two terms.
