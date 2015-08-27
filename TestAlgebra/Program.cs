@@ -63,7 +63,7 @@ namespace TestAlgebra
 
         static void Distributive()
         {
-            var eq = Algebra.Equality((x, y, z) => z * (x + y) == z * y + z * x);
+            var eq = Algebra.Identity((x, y, z) => z * (x + y) == z * y + z * x);
             var f = Algebra.Function(x => 3 * (x + 1));
             Debug.Assert(f.Rewrite() == f);
             Debug.Assert(f.Rewrite(1, eq).ToString() == "(3 + (3 * x))");
@@ -71,7 +71,7 @@ namespace TestAlgebra
 
         static void Factor()
         {
-            var eq = Algebra.Equality((x, y, z) => z * y + z * x == z * (x + y));
+            var eq = Algebra.Identity((x, y, z) => z * y + z * x == z * (x + y));
             var f = Algebra.Function((x, y) => 3 * x + 3 * y);
             Debug.Assert(f.Rewrite() == f);
             Debug.Assert(f.Rewrite(1, eq).ToString() == "(3 * (y + x))");

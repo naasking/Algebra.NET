@@ -1,0 +1,48 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<# var count = 16; #>
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Reflection;
+using System.Reflection.Emit;
+
+namespace AlgebraDotNet
+{
+	public static partial class Algebra
+	{
+<# for (int i = 0; i < count; ++i) { #>
+        /// <summary>
+        /// Define a function.
+        /// </summary>
+        /// <param name="body">The function body.</param>
+        /// <returns>A function.</returns>
+        public static Function<Func<<# for (int j = 0; j <= i; ++j) { #>double, <# } #> double>> Function(Func<<# for (int j = 0; j <= i; ++j) { #>Variable,<# } #> Function<Func<<# for (int j = 0; j <= i; ++j) { #>double, <# } #> double>>> body)
+        {
+            var p = body.Method.GetParameters();
+            var x0 = new Variable(p[0].Name, 0);
+<# for (int j = 1; j <= i; ++j) { #>
+            var x<#=j#> = new Variable(p[<#=j#>].Name, <#=j#>);
+<# } #>
+            return body(x0<# for (int j = 1; j <= i; ++j) { #>, x<#=j#><#}#>);
+        }
+		
+        /// <summary>
+        /// Define a function.
+        /// </summary>
+        /// <param name="body">The function body.</param>
+        /// <returns>A function.</returns>
+        public static Identity Identity(Func<<# for (int j = 0; j <= i; ++j) { #>Variable,<# } #> Identity> body)
+        {
+            var p = body.Method.GetParameters();
+            var x0 = new Variable(p[0].Name, 0);
+<# for (int j = 1; j <= i; ++j) { #>
+            var x<#=j#> = new Variable(p[<#=j#>].Name, <#=j#>);
+<# } #>
+            return body(x0<# for (int j = 1; j <= i; ++j) { #>, x<#=j#><#}#>);
+        }
+
+<# } #>
+	}
+}
