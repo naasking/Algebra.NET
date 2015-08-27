@@ -211,6 +211,7 @@ namespace AlgebraDotNet
                 last = current;
                 foreach (var e in equalities)
                 {
+                    Array.Clear(bindings, 0, bindings.Length);
                     current = current.Rewrite(e, bindings);
                 }
             } while (--rounds > 0 && !ReferenceEquals(last, current));
@@ -318,8 +319,19 @@ namespace AlgebraDotNet
         }
         protected internal override bool TryUnify(Term e, Term[] bindings)
         {
-            bindings[index] = e;
-            return true;
+            if (ReferenceEquals(bindings[index], e) || ReferenceEquals(bindings[index], null) || bindings[index].Equals(e))
+            {
+                bindings[index] = e;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        public override bool Equals(Term other)
+        {
+            return other.type == TermType.Var && (other as Variable).index == index;
         }
         public override string ToString()
         {
@@ -330,7 +342,7 @@ namespace AlgebraDotNet
     /// <summary>
     /// A numerical term.
     /// </summary>
-    public abstract class Term
+    public abstract class Term : IEquatable<Term>
     {
         protected internal TermType type;
         protected internal int nextVar;
@@ -404,6 +416,13 @@ namespace AlgebraDotNet
                 //return x;
             }
 
+            public override bool Equals(Term other)
+            {
+                if (type != other.type) return false;
+                var x = other as Binary;
+                return left.Equals(x.left) && right.Equals(x.right);
+            }
+
             public override string ToString()
             {
                 char op;
@@ -439,6 +458,10 @@ namespace AlgebraDotNet
             protected internal override bool TryUnify(Term e, Term[] bindings)
             {
                 return e.type == TermType.Const && value == (e as Const).value;
+            }
+            public override bool Equals(Term other)
+            {
+                return other.type == TermType.Const && (other as Const).value == value;
             }
             public override string ToString()
             {
@@ -479,6 +502,13 @@ namespace AlgebraDotNet
             return e.left.TryUnify(this, bindings) ?  e.right.Subsitute(bindings) : this;
         }
         #endregion
+
+        /// <summary>
+        /// Equality on terms.
+        /// </summary>
+        /// <param name="other"></param>
+        /// <returns></returns>
+        public abstract bool Equals(Term other);
 
         /// <summary>
         /// Add two terms.
