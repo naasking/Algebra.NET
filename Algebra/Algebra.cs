@@ -370,11 +370,17 @@ namespace AlgebraDotNet
 
             protected internal override Term Rewrite(Identity e, Term[] bindings)
             {
-                var nleft = left.Rewrite(e, bindings);
-                var nright = right.Rewrite(e, bindings);
-                return ReferenceEquals(nleft, left) && ReferenceEquals(nright, right)
-                     ? base.Rewrite(e, bindings)
-                     : new Binary(type, nleft, nright).Rewrite(e, bindings);
+                Term x = this, last;
+                do
+                {
+                    last = x;
+                    var nleft = left.Rewrite(e, bindings);
+                    var nright = right.Rewrite(e, bindings);
+                    x = ReferenceEquals(nleft, left) && ReferenceEquals(nright, right)
+                         ? base.Rewrite(e, bindings)
+                         : new Binary(type, nleft, nright).Rewrite(e, bindings);
+                } while (!ReferenceEquals(x, last));
+                return x;
             }
 
             public override string ToString()
