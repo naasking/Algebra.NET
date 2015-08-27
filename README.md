@@ -1,6 +1,6 @@
 # Algebra.NET
 
-This is a simple algebra library designed to facility easy expression
+This is a simple algebra library designed to facilitate easy expression
 and manipulation of algebraic functions. For instance, here's a simple
 function:
 
