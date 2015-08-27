@@ -384,7 +384,18 @@ namespace AlgebraDotNet
 
             protected internal override Term Subsitute(Term[] subs)
             {
-                return new Binary(type, left.Subsitute(subs), right.Subsitute(subs));
+                var nleft = left.Subsitute(subs);
+                var nright = right.Subsitute(subs);
+                switch (type)
+                {
+                    case TermType.Add: return nleft + nright;
+                    case TermType.Div: return nleft / nright;
+                    case TermType.Mul: return nleft * nright;
+                    case TermType.Pow: return nleft.Pow(nright);
+                    case TermType.Sub: return nleft - nright;
+                    default:
+                        throw new NotSupportedException("Unknown binary operation: " + type);
+                }
             }
 
             protected internal override bool TryUnify(Term e, Term[] bindings)
