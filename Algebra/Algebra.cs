@@ -274,7 +274,7 @@ namespace AlgebraDotNet
     /// </summary>
     public enum TermType
     {
-        Add, Sub, Mul, Div, Pow, Neg, Const, Var
+        Add, Sub, Mul, Div, Pow, Sqrt, Const, Var
     }
 
     /// <summary>
@@ -460,7 +460,9 @@ namespace AlgebraDotNet
         /// <returns></returns>
         public Term Add(Term right)
         {
-            return new Binary(TermType.Add, this, right);
+            return type == TermType.Const && right.type == TermType.Const
+                 ? (this as Const).value + (right as Const).value
+                 : new Binary(TermType.Add, this, right) as Term;
         }
 
         /// <summary>
@@ -470,7 +472,9 @@ namespace AlgebraDotNet
         /// <returns></returns>
         public Term Subtract(Term right)
         {
-            return new Binary(TermType.Sub, this, right);
+            return type == TermType.Const && right.type == TermType.Const
+                 ? (this as Const).value - (right as Const).value
+                 : new Binary(TermType.Sub, this, right) as Term;
         }
 
         /// <summary>
@@ -480,17 +484,21 @@ namespace AlgebraDotNet
         /// <returns></returns>
         public Term Multiply(Term right)
         {
-            return new Binary(TermType.Mul, this, right);
+            return type == TermType.Const && right.type == TermType.Const
+                 ? (this as Const).value * (right as Const).value
+                 : new Binary(TermType.Mul, this, right) as Term;
         }
         
         /// <summary>
         /// Divide two terms.
         /// </summary>
-        /// <param name="right"></param>
+        /// <param name="denominator"></param>
         /// <returns></returns>
-        public Term Divide(Term right)
+        public Term Divide(Term denominator)
         {
-            return new Binary(TermType.Div, this, right);
+            return type == TermType.Const && denominator.type == TermType.Const
+                 ? (this as Const).value / (denominator as Const).value
+                 : new Binary(TermType.Div, this, denominator) as Term;
         }
 
         /// <summary>
@@ -500,16 +508,18 @@ namespace AlgebraDotNet
         /// <returns></returns>
         public Term Pow(Term exponent)
         {
-            return new Binary(TermType.Pow, this, exponent);
+            return type == TermType.Const && exponent.type == TermType.Const
+                 ? Math.Pow((this as Const).value, (exponent as Const).value)
+                 : new Binary(TermType.Pow, this, exponent) as Term;
         }
         
         /// <summary>
         /// Negate the current term.
         /// </summary>
         /// <returns></returns>
-        public virtual Term Negate()
+        public Term Negate()
         {
-            return new Const(0) - this;
+            return type == TermType.Const ? -(this as Const).value : new Const(0) - this;
         }
         
         /// <summary>
