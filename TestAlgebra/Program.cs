@@ -90,7 +90,7 @@ namespace TestAlgebra
             var eq = Algebra.Identity(x => x * x == x.Pow(2));
             var f = Algebra.Function((x, y) => (x + 1) * (x + 1));
             Debug.Assert(f.Rewrite() == f);
-            Debug.Assert(f.Rewrite(2, eq).ToString() == "((x + 1) ^ (2))");
+            Debug.Assert(f.Rewrite(2, eq).ToString() == "((x + 1) ^ 2)");
         }
 
         static void ReadmeSample()

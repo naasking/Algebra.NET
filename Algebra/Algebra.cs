@@ -40,7 +40,19 @@ namespace AlgebraDotNet
     public struct Function<T> : IEquatable<Function<T>>
         where T : class
     {
-        internal Term Body { get; set; }
+        Term body;
+        string[] parameters;
+
+        public Function(Term body, ParameterInfo[] param)
+            : this(body, param.Select(x => x.Name).ToArray())
+        {
+        }
+
+        public Function(Term body, params string[] param)
+        {
+            this.body = body;
+            this.parameters = param;
+        }
 
         /// <summary>
         /// Compile the numerical function into a delegate.
@@ -50,12 +62,12 @@ namespace AlgebraDotNet
         public T Compile(string name)
         {
             // assumes that # generic arguments = # parameters + 1, ie. Func<arg0, arg1, returnType>
-            var signature = typeof(T).GetGenericArguments().Take((int)HighestBit(Body.varMask)).ToArray();
+            var signature = typeof(T).GetGenericArguments().Take((int)HighestBit(body.VMask)).ToArray();
             var method = new DynamicMethod(name, typeof(double), signature);
             for (int i = 0; i < signature.Length; ++i)
                 method.DefineParameter(i, ParameterAttributes.In, "arg" + i);
             var il = method.GetILGenerator();
-            Body.Compile(il);
+            body.Compile(il);
             il.Emit(OpCodes.Ret);
             return method.CreateDelegate(typeof(T)) as T;
         }
@@ -67,7 +79,7 @@ namespace AlgebraDotNet
         /// <returns></returns>
         public bool Equals(Function<T> other)
         {
-            return ReferenceEquals(Body, other.Body);
+            return body.Equals(other.body);
         }
 
         /// <summary>
@@ -88,8 +100,8 @@ namespace AlgebraDotNet
         /// <returns>A new function with the given equalities applied.</returns>
         public Function<T> Rewrite(int rounds, params Identity[] equalities)
         {
-            var bindings = new Term[Math.Max(HighestBit(Body.varMask), equalities.Max(x => (int?)HighestBit(x.left.varMask)) ?? 0)];
-            return Term.Rewrite(Body, rounds, equalities, bindings);
+            var bindings = new Term[Math.Max(HighestBit(body.VMask), equalities.Max(x => (int?)HighestBit(x.left.VMask)) ?? 0)];
+            return new Function<T>(Term.Rewrite(body, rounds, equalities, bindings), parameters);
             //return Term.Reduce(Body, rounds, equalities, bindings);
         }
 
@@ -103,6 +115,7 @@ namespace AlgebraDotNet
         {
             return left.Equals(right);
         }
+
         /// <summary>
         /// Compare two functions for inequality.
         /// </summary>
@@ -113,14 +126,10 @@ namespace AlgebraDotNet
         {
             return !(left == right);
         }
-        /// <summary>
-        /// Implicit convert a term to the expected function type.
-        /// </summary>
-        /// <param name="body"></param>
-        /// <returns></returns>
-        public static implicit operator Function<T>(Term body)
+
+        internal Function<T> With(ParameterInfo[] parameters)
         {
-            return new Function<T> { Body = body };
+            return new Function<T>(body, parameters);
         }
 
         /// <summary>
@@ -130,7 +139,17 @@ namespace AlgebraDotNet
         public override string ToString()
         {
             //return "f[" + Body.nextVar + "] = " + Body.ToString();
-            return Body.ToString();
+            return body.Print(new StringBuilder(), parameters).ToString();
+        }
+
+        /// <summary>
+        /// Implicit convert a term to the expected function type.
+        /// </summary>
+        /// <param name="body"></param>
+        /// <returns></returns>
+        public static implicit operator Function<T>(Term body)
+        {
+            return new Function<T>(body);
         }
 
         #region Bit-twiddling functions
@@ -158,10 +177,10 @@ namespace AlgebraDotNet
         /// Implementation taken from:
         /// http://aggregate.org/MAGIC/#Most%20Significant%201%20Bit
         /// </remarks>
-        static int HighestBit(uint value)
+        static int HighestBit(int value)
         {
-            value = Fold(value);
-            return unchecked((int)(value ^ (value >> 1)));
+            var x = Fold(unchecked((uint)value));
+            return unchecked((int)(x ^ (x >> 1)));
         }
         #endregion
     }
@@ -175,7 +194,7 @@ namespace AlgebraDotNet
         internal Term right;
         public Identity(Term left, Term right)
         {
-            if ((left.varMask | right.varMask) != left.varMask)
+            if ((left.VMask | right.VMask) != left.VMask)
                 throw new ArgumentException("The right hand side contains variables not appearing in the left hand side.");
             this.left = left;
             this.right = right;
@@ -196,429 +215,6 @@ namespace AlgebraDotNet
     /// </summary>
     public enum TermType
     {
-        Add, Sub, Mul, Div, Pow, Const, Var
-    }
-
-    /// <summary>
-    /// A variable used to define an term.
-    /// </summary>
-    public class Variable : Term
-    {
-        internal short index;
-        internal string name;
-
-        //FIXME: 1 + index just checks the max variable used, it doesn't ensure that all variables are used
-        //Perhaps use a 64-bit bitmap supporting a max of 64 variables?
-
-        internal Variable(string name, short index)
-            : base(TermType.Var, 1 << index, 1)
-        {
-            this.name = name;
-            this.index = index;
-        }
-
-        internal protected override void Compile(ILGenerator il)
-        {
-            il.Emit(OpCodes.Ldarg, index);
-        }
-        protected internal override Term Subsitute(Term[] subs)
-        {
-            return subs[index];
-        }
-        protected internal override bool TryMatch(Term e, Term[] bindings)
-        {
-            if (ReferenceEquals(bindings[index], e) || ReferenceEquals(bindings[index], null) || bindings[index].Equals(e))
-            {
-                bindings[index] = e;
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-        public override bool Equals(Term other)
-        {
-            return other.type == TermType.Var && (other as Variable).index == index;
-        }
-        public override string ToString()
-        {
-            return name;
-        }
-    }
-
-    /// <summary>
-    /// A numerical term.
-    /// </summary>
-    public abstract class Term : IEquatable<Term>
-    {
-        protected internal TermType type;
-        protected internal ushort varMask;  // a bitmask listing the variables in this term
-        protected internal short nodeCount; // the total number of nodes in this term
-        
-        protected Term(TermType type, int varMask, short nodeCount)
-        {
-            this.type = type;
-            this.varMask = (ushort)varMask;
-            this.nodeCount = nodeCount;
-        }
-
-        sealed class Binary : Term
-        {
-            internal Term left;
-            internal Term right;
-            static MethodInfo pow = typeof(Math).GetMethod("Pow", new[] { typeof(double), typeof(double) });
-
-            public Binary(TermType type, Term left, Term right)
-                : base(type, left.varMask | right.varMask, (short)(1 + left.nodeCount + right.nodeCount))
-            {
-                this.left = left;
-                this.right = right;
-            }
-
-            internal protected override void Compile(ILGenerator il)
-            {
-                left.Compile(il);
-                right.Compile(il);
-                switch (type)
-                {
-                    case TermType.Add: il.Emit(OpCodes.Add); break;
-                    case TermType.Div: il.Emit(OpCodes.Div); break;
-                    case TermType.Pow: il.Emit(OpCodes.Call, pow); break;
-                    case TermType.Mul: il.Emit(OpCodes.Mul); break;
-                    case TermType.Sub: il.Emit(OpCodes.Sub); break;
-                    default:
-                        throw new NotSupportedException("Unknown operator: " + type);
-                }
-            }
-
-            protected internal override Term Subsitute(Term[] subs)
-            {
-                var nleft = left.Subsitute(subs);
-                var nright = right.Subsitute(subs);
-                return nleft.Operation(type, nright);
-            }
-
-            protected internal override bool TryMatch(Term e, Term[] bindings)
-            {
-                if (e.type != type) return false;
-                var eb = e as Binary;
-                return left.TryMatch(eb.left, bindings) && right.TryMatch(eb.right, bindings);
-            }
-
-            public override bool Equals(Term other)
-            {
-                if (type != other.type) return false;
-                var x = other as Binary;
-                return left.Equals(x.left) && right.Equals(x.right);
-            }
-
-            public override string ToString()
-            {
-                char op;
-                switch (type)
-                {
-                    case TermType.Add: op = '+'; break;
-                    case TermType.Div: op = '/'; break;
-                    case TermType.Mul: op = '*'; break;
-                    case TermType.Pow: op = '^'; break;
-                    case TermType.Sub: op = '-'; break;
-                    default:
-                        throw new NotSupportedException("Unknown type: " + type);
-                }
-                return '(' + left.ToString() + ' ' + op + (type == TermType.Pow ? " (" + right.ToString() + "))" : ' ' + right.ToString() + ')');
-            }
-        }
-
-        sealed class Const : Term
-        {
-            internal double value;
-            public Const(double value) : base(TermType.Const, 0, 1)
-            {
-                this.value = value;
-            }
-            internal protected override void Compile(ILGenerator il)
-            {
-                il.Emit(OpCodes.Ldc_R8, value);
-            }
-            protected internal override Term Subsitute(Term[] subs)
-            {
-                return this;
-            }
-            protected internal override bool TryMatch(Term e, Term[] bindings)
-            {
-                return e.type == TermType.Const && value == (e as Const).value;
-            }
-            public override bool Equals(Term other)
-            {
-                return other.type == TermType.Const && (other as Const).value == value;
-            }
-            public override string ToString()
-            {
-                return value.ToString();
-            }
-        }
-
-        #region Internal operations
-        /// <summary>
-        /// Compile the instructions to CIL.
-        /// </summary>
-        /// <param name="il"></param>
-        internal protected abstract void Compile(ILGenerator il);
-
-        /// <summary>
-        /// Replace the existing term with the given bindings.
-        /// </summary>
-        /// <param name="bindings"></param>
-        /// <returns></returns>
-        internal protected abstract Term Subsitute(Term[] bindings);
-
-        /// <summary>
-        /// Attempt to unify this term with the given term.
-        /// </summary>
-        /// <param name="e"></param>
-        /// <param name="bindings"></param>
-        /// <returns></returns>
-        internal protected abstract bool TryMatch(Term e, Term[] bindings);
-
-        /// <summary>
-        /// Rewrite a term given a set of identities and a maximum number of rounds per-node.
-        /// </summary>
-        internal protected static Term Rewrite(Term current, int rounds, Identity[] equalities, Term[] bindings)
-        {
-            Term last;
-            do
-            {
-                last = current;
-                switch (current.type)
-                {
-                    case TermType.Add:
-                    case TermType.Div:
-                    case TermType.Mul:
-                    case TermType.Pow:
-                    case TermType.Sub:
-                        var bin = current as Binary;
-                        var nleft = Rewrite(bin.left, rounds, equalities, bindings);
-                        var nright = Rewrite(bin.right, rounds, equalities, bindings);
-                        current = ReferenceEquals(nleft, bin.left) && ReferenceEquals(nright, bin.right)
-                                 ? current
-                                 : nleft.Operation(bin.type, nright);
-                        // now that sub-terms have been rewritten, try rewriting this term
-                        goto case TermType.Var;
-                    case TermType.Var:
-                    case TermType.Const:
-                        foreach (var e in equalities)
-                        {
-                            Array.Clear(bindings, 0, bindings.Length);
-                            if (e.left.TryMatch(current, bindings))
-                                current = e.right.Subsitute(bindings);
-                        }
-                        break;
-                    default:
-                        throw new NotSupportedException("Unknown term type: " + current.type);
-                }
-            } while (--rounds > 0 && !ReferenceEquals(last, current));
-            return current;
-        }
-        #endregion
-
-        /// <summary>
-        /// Equality on terms.
-        /// </summary>
-        /// <param name="other"></param>
-        /// <returns></returns>
-        public abstract bool Equals(Term other);
-
-        /// <summary>
-        /// Create a binary operation for two terms.
-        /// </summary>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public Term Operation(TermType operation, Term right)
-        {
-            switch (operation)
-            {
-                case TermType.Add: return this + right;
-                case TermType.Div: return this / right;
-                case TermType.Mul: return this * right;
-                case TermType.Pow: return this.Pow(right);
-                case TermType.Sub: return this - right;
-                default:
-                    throw new NotSupportedException("Unknown binary operation: " + type);
-            }
-        }
-
-        /// <summary>
-        /// Add two terms.
-        /// </summary>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public Term Add(Term right)
-        {
-            return type == TermType.Const && right.type == TermType.Const
-                 ? (this as Const).value + (right as Const).value
-                 : new Binary(TermType.Add, this, right) as Term;
-        }
-
-        /// <summary>
-        /// Subtract two terms.
-        /// </summary>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public Term Subtract(Term right)
-        {
-            return type == TermType.Const && right.type == TermType.Const
-                 ? (this as Const).value - (right as Const).value
-                 : new Binary(TermType.Sub, this, right) as Term;
-        }
-
-        /// <summary>
-        /// Multiply two terms.
-        /// </summary>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public Term Multiply(Term right)
-        {
-            return type == TermType.Const && right.type == TermType.Const
-                 ? (this as Const).value * (right as Const).value
-                 : new Binary(TermType.Mul, this, right) as Term;
-        }
-        
-        /// <summary>
-        /// Divide two terms.
-        /// </summary>
-        /// <param name="denominator"></param>
-        /// <returns></returns>
-        public Term Divide(Term denominator)
-        {
-            return type == TermType.Const && denominator.type == TermType.Const
-                 ? (this as Const).value / (denominator as Const).value
-                 : new Binary(TermType.Div, this, denominator) as Term;
-        }
-
-        /// <summary>
-        /// Raise the current term to the power of <paramref name="exponent"/>.
-        /// </summary>
-        /// <param name="exponent"></param>
-        /// <returns></returns>
-        public Term Pow(Term exponent)
-        {
-            return type == TermType.Const && exponent.type == TermType.Const
-                 ? Math.Pow((this as Const).value, (exponent as Const).value)
-                 : new Binary(TermType.Pow, this, exponent) as Term;
-        }
-        
-        /// <summary>
-        /// Negate the current term.
-        /// </summary>
-        /// <returns></returns>
-        public Term Negate()
-        {
-            return type == TermType.Const ? -(this as Const).value : new Const(0) - this;
-        }
-        
-        /// <summary>
-        /// Construct an term encapsulating a constant.
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        public static Term Constant(double value)
-        {
-            return new Const(value);
-        }
-
-        /// <summary>
-        /// Generate a string representation of the term.
-        /// </summary>
-        /// <returns></returns>
-        public abstract override string ToString();
-
-        #region Operators
-        /// <summary>
-        /// Create an term encapsulating a double.
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        public static implicit operator Term(double value)
-        {
-            return Constant(value);
-        }
-        
-        /// <summary>
-        /// Add two terms.
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public static Term operator +(Term left, Term right)
-        {
-            return left.Add(right);
-        }
-
-        /// <summary>
-        /// Subtract two terms.
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public static Term operator -(Term left, Term right)
-        {
-            return left.Subtract(right);
-        }
-
-        /// <summary>
-        /// Negate an term.
-        /// </summary>
-        /// <param name="x"></param>
-        /// <returns></returns>
-        public static Term operator -(Term x)
-        {
-            return x.Negate();
-        }
-
-        /// <summary>
-        /// Multiply two terms.
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public static Term operator *(Term left, Term right)
-        {
-            return left.Multiply(right);
-        }
-
-        /// <summary>
-        /// Divide two terms.
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public static Term operator /(Term left, Term right)
-        {
-            return left.Divide(right);
-        }
-
-        /// <summary>
-        /// Generate an identity between two terms.
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public static Identity operator ==(Term left, Term right)
-        {
-            return new Identity(left, right);
-        }
-
-        /// <summary>
-        /// ERROR: inequality is not supported.
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public static Identity operator !=(Term left, Term right)
-        {
-            throw new NotSupportedException("Inequalities not supported.");
-        }
-        #endregion
+        Const = 0, Var, Add, Sub, Mul, Div, Pow,
     }
 }

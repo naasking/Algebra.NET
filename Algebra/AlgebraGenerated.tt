@@ -18,14 +18,14 @@ namespace AlgebraDotNet
         /// </summary>
         /// <param name="body">The function body.</param>
         /// <returns>A function.</returns>
-        public static Function<Func<<# for (int j = 0; j <= i; ++j) { #>double, <# } #> double>> Function(Func<<# for (int j = 0; j <= i; ++j) { #>Variable,<# } #> Function<Func<<# for (int j = 0; j <= i; ++j) { #>double, <# } #> double>>> body)
+        public static Function<Func<<# for (int j = 0; j <= i; ++j) { #>double, <# } #>double>> Function(Func<<# for (int j = 0; j <= i; ++j) { #>Term, <# } #>Function<Func<<# for (int j = 0; j <= i; ++j) { #>double, <# } #> double>>> body)
         {
             var p = body.Method.GetParameters();
-            var x0 = new Variable(p[0].Name, 0);
+            var x0 = new Term(0);
 <# for (int j = 1; j <= i; ++j) { #>
-            var x<#=j#> = new Variable(p[<#=j#>].Name, <#=j#>);
+            var x<#=j#> = new Term(<#=j#>);
 <# } #>
-            return body(x0<# for (int j = 1; j <= i; ++j) { #>, x<#=j#><#}#>);
+            return body(x0<# for (int j = 1; j <= i; ++j) { #>, x<#=j#><#}#>).With(p);
         }
 		
         /// <summary>
@@ -33,12 +33,12 @@ namespace AlgebraDotNet
         /// </summary>
         /// <param name="body">The function body.</param>
         /// <returns>A function.</returns>
-        public static Identity Identity(Func<<# for (int j = 0; j <= i; ++j) { #>Variable,<# } #> Identity> body)
+        public static Identity Identity(Func<<# for (int j = 0; j <= i; ++j) { #>Term, <# } #>Identity> body)
         {
             var p = body.Method.GetParameters();
-            var x0 = new Variable(p[0].Name, 0);
+            var x0 = new Term(0);
 <# for (int j = 1; j <= i; ++j) { #>
-            var x<#=j#> = new Variable(p[<#=j#>].Name, <#=j#>);
+            var x<#=j#> = new Term(<#=j#>);
 <# } #>
             return body(x0<# for (int j = 1; j <= i; ++j) { #>, x<#=j#><#}#>);
         }
