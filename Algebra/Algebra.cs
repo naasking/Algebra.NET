@@ -88,22 +88,9 @@ namespace AlgebraDotNet
         /// <returns>A new function with the given equalities applied.</returns>
         public Function<T> Rewrite(int rounds, params Identity[] equalities)
         {
-            // rewriting
-            // continue looping until we reach a fixed point, ie. term of last loop == this loop's term
-            Term last, current = Body;
-            // allocate enough space for all possible variables
             var bindings = new Term[Math.Max(HighestBit(Body.varMask), equalities.Max(x => (int?)HighestBit(x.left.varMask)) ?? 0)];
-            do
-            {
-                // apply every equality to rewrite the term
-                last = current;
-                foreach (var e in equalities)
-                {
-                    Array.Clear(bindings, 0, bindings.Length);
-                    current = current.Rewrite(e, bindings);
-                }
-            } while (--rounds > 0 && !ReferenceEquals(last, current));
-            return current;
+            return Term.Rewrite(Body, rounds, equalities, bindings);
+            //return Term.Reduce(Body, rounds, equalities, bindings);
         }
 
         /// <summary>
@@ -268,6 +255,7 @@ namespace AlgebraDotNet
         protected internal TermType type;
         protected internal ushort varMask;  // a bitmask listing the variables in this term
         protected internal short nodeCount; // the total number of nodes in this term
+        protected internal bool visited;
         
         protected Term(TermType type, int varMask, short nodeCount)
         {
@@ -317,15 +305,6 @@ namespace AlgebraDotNet
                 if (e.type != type) return false;
                 var eb = e as Binary;
                 return left.TryUnify(eb.left, bindings) && right.TryUnify(eb.right, bindings);
-            }
-
-            protected internal override Term Rewrite(Identity e, Term[] bindings)
-            {
-                var nleft = left.Rewrite(e, bindings);
-                var nright = right.Rewrite(e, bindings);
-                return ReferenceEquals(nleft, left) && ReferenceEquals(nright, right)
-                     ? base.Rewrite(e, bindings)
-                     : nleft.Operation(type, nright).Rewrite(e, bindings);
             }
 
             public override bool Equals(Term other)
@@ -404,14 +383,41 @@ namespace AlgebraDotNet
         internal protected abstract bool TryUnify(Term e, Term[] bindings);
 
         /// <summary>
-        /// Rewrite the current term with the given equality.
+        /// Rewrite a term given a set of identities and a maximum number of rounds per-node.
         /// </summary>
-        /// <param name="e"></param>
-        /// <param name="bindings"></param>
-        /// <returns></returns>
-        internal protected virtual Term Rewrite(Identity e, Term[] bindings)
+        internal protected static Term Rewrite(Term current, int rounds, Identity[] equalities, Term[] bindings)
         {
-            return e.left.TryUnify(this, bindings) ?  e.right.Subsitute(bindings) : this;
+            Term last;
+            do
+            {
+                last = current;
+                switch (current.type)
+                {
+                    case TermType.Add:
+                    case TermType.Div:
+                    case TermType.Mul:
+                    case TermType.Pow:
+                    case TermType.Sub:
+                        var bin = current as Binary;
+                        var nleft = Rewrite(bin.left, rounds, equalities, bindings);
+                        var nright = Rewrite(bin.right, rounds, equalities, bindings);
+                        current = ReferenceEquals(nleft, bin.left) && ReferenceEquals(nright, bin.right)
+                                 ? current
+                                 : nleft.Operation(bin.type, nright);
+                        // now that sub-terms have been rewritten, try rewriting this term
+                        goto case TermType.Var;
+                    case TermType.Var:
+                    case TermType.Const:
+                        foreach (var e in equalities)
+                        {
+                            Array.Clear(bindings, 0, bindings.Length);
+                            if (e.left.TryUnify(current, bindings))
+                                current = e.right.Subsitute(bindings);
+                        }
+                        break;
+                }
+            } while (--rounds > 0 && !ReferenceEquals(last, current));
+            return current;
         }
         #endregion
 
