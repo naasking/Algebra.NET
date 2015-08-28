@@ -255,7 +255,6 @@ namespace AlgebraDotNet
         protected internal TermType type;
         protected internal ushort varMask;  // a bitmask listing the variables in this term
         protected internal short nodeCount; // the total number of nodes in this term
-        protected internal bool visited;
         
         protected Term(TermType type, int varMask, short nodeCount)
         {
