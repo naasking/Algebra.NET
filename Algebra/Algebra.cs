@@ -225,7 +225,7 @@ namespace AlgebraDotNet
         {
             return subs[index];
         }
-        protected internal override bool TryUnify(Term e, Term[] bindings)
+        protected internal override bool TryMatch(Term e, Term[] bindings)
         {
             if (ReferenceEquals(bindings[index], e) || ReferenceEquals(bindings[index], null) || bindings[index].Equals(e))
             {
@@ -299,11 +299,11 @@ namespace AlgebraDotNet
                 return nleft.Operation(type, nright);
             }
 
-            protected internal override bool TryUnify(Term e, Term[] bindings)
+            protected internal override bool TryMatch(Term e, Term[] bindings)
             {
                 if (e.type != type) return false;
                 var eb = e as Binary;
-                return left.TryUnify(eb.left, bindings) && right.TryUnify(eb.right, bindings);
+                return left.TryMatch(eb.left, bindings) && right.TryMatch(eb.right, bindings);
             }
 
             public override bool Equals(Term other)
@@ -345,7 +345,7 @@ namespace AlgebraDotNet
             {
                 return this;
             }
-            protected internal override bool TryUnify(Term e, Term[] bindings)
+            protected internal override bool TryMatch(Term e, Term[] bindings)
             {
                 return e.type == TermType.Const && value == (e as Const).value;
             }
@@ -379,7 +379,7 @@ namespace AlgebraDotNet
         /// <param name="e"></param>
         /// <param name="bindings"></param>
         /// <returns></returns>
-        internal protected abstract bool TryUnify(Term e, Term[] bindings);
+        internal protected abstract bool TryMatch(Term e, Term[] bindings);
 
         /// <summary>
         /// Rewrite a term given a set of identities and a maximum number of rounds per-node.
@@ -410,7 +410,7 @@ namespace AlgebraDotNet
                         foreach (var e in equalities)
                         {
                             Array.Clear(bindings, 0, bindings.Length);
-                            if (e.left.TryUnify(current, bindings))
+                            if (e.left.TryMatch(current, bindings))
                                 current = e.right.Subsitute(bindings);
                         }
                         break;
