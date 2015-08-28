@@ -266,8 +266,8 @@ namespace AlgebraDotNet
     public abstract class Term : IEquatable<Term>
     {
         protected internal TermType type;
-        protected internal ushort varMask;
-        protected internal short nodeCount;
+        protected internal ushort varMask;  // a bitmask listing the variables in this term
+        protected internal short nodeCount; // the total number of nodes in this term
         
         protected Term(TermType type, int varMask, short nodeCount)
         {
@@ -283,7 +283,7 @@ namespace AlgebraDotNet
             static MethodInfo pow = typeof(Math).GetMethod("Pow", new[] { typeof(double), typeof(double) });
 
             public Binary(TermType type, Term left, Term right)
-                : base(type, left.varMask | right.varMask, (short)(left.nodeCount + right.nodeCount))
+                : base(type, left.varMask | right.varMask, (short)(1 + left.nodeCount + right.nodeCount))
             {
                 this.left = left;
                 this.right = right;
