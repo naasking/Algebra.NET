@@ -38,23 +38,23 @@ extension method for exponentiation:
 It's a nice, functional example of a simple term rewriting system. Term
 rewriting is usually pretty awkward in an object-oriented language,
 and I banged my head against the keyboard to figure out a nice
-way to do it, until I hit on just doing unification (of course!).
+way to do it, until I hit on just doing a simple pattern match.
 
 So I reused the term language and added an equality operator to
 generate an identity that conceptually maps one term to another.
-I then perform unification on the left hand side, and generate a set of
+I then pattern match on the left hand side, and generate a set of
 substitutions to transform the matching term into the right hand side
 of the identity.
 
 It was ultimately quite simple, consisting of 3 methods on Term:
 
-	Term Rewrite(Identity e, Term[] bindings)
-    bool TryUnify(Term e, Term[] bindings)
+	static Term Rewrite(Term current, int rounds, Identity[] equalities, Term[] bindings)
+    bool TryMatch(Term e, Term[] bindings)
     Term Subsitute(Term[] bindings)
 
-Rewrite tries to recursively unify the Identity's left hand side with
-the current term using TryUnify. On success, the 'bindings' array
-will have been populated by TryUnify with the substitutions to perform,
+Rewrite tries to recursively match the Identity's left hand side with
+the current term using TryMatch. On success, the 'bindings' array
+will have been populated by TryMatch with the substitutions to perform,
 so it substitutes the bindings into the identity's right hand side to
 generate the new term.
 
@@ -63,7 +63,7 @@ operations. Negation is handled as a binary operation "0 - x" for
 simplicity.
 
 So if you want to understand expression compilation to CIL,
-unification, or term rewriting, this is pretty much as simple
+pattern matching, or term rewriting, this is pretty much as simple
 as it gets.
 
 Algebra.NET doesn't perform any term simplification at this point,
