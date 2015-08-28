@@ -414,6 +414,8 @@ namespace AlgebraDotNet
                                 current = e.right.Subsitute(bindings);
                         }
                         break;
+                    default:
+                        throw new NotSupportedException("Unknown term type: " + current.type);
                 }
             } while (--rounds > 0 && !ReferenceEquals(last, current));
             return current;
