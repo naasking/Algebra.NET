@@ -50,7 +50,7 @@ namespace AlgebraDotNet
         public T Compile(string name)
         {
             // assumes that # generic arguments = # parameters + 1, ie. Func<arg0, arg1, returnType>
-            var signature = typeof(T).GetGenericArguments().Take(Body.nextVar).ToArray();
+            var signature = typeof(T).GetGenericArguments().Take((int)HighestBit(Body.varMask)).ToArray();
             var method = new DynamicMethod(name, typeof(double), signature);
             for (int i = 0; i < signature.Length; ++i)
                 method.DefineParameter(i, ParameterAttributes.In, "arg" + i);
@@ -92,7 +92,7 @@ namespace AlgebraDotNet
             // continue looping until we reach a fixed point, ie. term of last loop == this loop's term
             Term last, current = Body;
             // allocate enough space for all possible variables
-            var bindings = new Term[Math.Max(Body.nextVar, equalities.Max(x => (int?)x.left.nextVar) ?? 0)];
+            var bindings = new Term[Math.Max(HighestBit(Body.varMask), equalities.Max(x => (int?)HighestBit(x.left.varMask)) ?? 0)];
             do
             {
                 // apply every equality to rewrite the term
@@ -145,6 +145,38 @@ namespace AlgebraDotNet
             //return "f[" + Body.nextVar + "] = " + Body.ToString();
             return Body.ToString();
         }
+
+        #region Bit-twiddling functions
+        /// <summary>
+        /// Fold the high order bits into the low order bits.
+        /// </summary>
+        /// <param name="value">The value to operate on.</param>
+        /// <returns>The folded value.</returns>
+        static uint Fold(uint value)
+        {
+            value |= (value >> 1);
+            value |= (value >> 2);
+            value |= (value >> 4);
+            value |= (value >> 8);
+            value |= (value >> 16);
+            return value;
+        }
+
+        /// <summary>
+        /// Extract the highest bit.
+        /// </summary>
+        /// <param name="value">The bit pattern to use.</param>
+        /// <returns>The bit pattern with only the highest bit set.</returns>
+        /// <remarks>
+        /// Implementation taken from:
+        /// http://aggregate.org/MAGIC/#Most%20Significant%201%20Bit
+        /// </remarks>
+        static int HighestBit(uint value)
+        {
+            value = Fold(value);
+            return unchecked((int)(value ^ (value >> 1)));
+        }
+        #endregion
     }
 
     /// <summary>
@@ -156,8 +188,8 @@ namespace AlgebraDotNet
         internal Term right;
         public Identity(Term left, Term right)
         {
-            if (left.nextVar != right.nextVar)
-                throw new ArgumentException("The number of variables in each term must be equal.");
+            if ((left.varMask | right.varMask) != left.varMask)
+                throw new ArgumentException("The right hand side contains variables not appearing in the left hand side.");
             this.left = left;
             this.right = right;
         }
@@ -185,13 +217,14 @@ namespace AlgebraDotNet
     /// </summary>
     public class Variable : Term
     {
+        internal short index;
         internal string name;
-        internal int index;
 
         //FIXME: 1 + index just checks the max variable used, it doesn't ensure that all variables are used
         //Perhaps use a 64-bit bitmap supporting a max of 64 variables?
-        internal Variable(string name, int index)
-            : base(TermType.Var, 1 + index)
+
+        internal Variable(string name, short index)
+            : base(TermType.Var, 1 << index, 1)
         {
             this.name = name;
             this.index = index;
@@ -233,12 +266,14 @@ namespace AlgebraDotNet
     public abstract class Term : IEquatable<Term>
     {
         protected internal TermType type;
-        protected internal int nextVar;
-
-        protected Term(TermType type, int nextVar)
+        protected internal ushort varMask;
+        protected internal short nodeCount;
+        
+        protected Term(TermType type, int varMask, short nodeCount)
         {
             this.type = type;
-            this.nextVar = nextVar;
+            this.varMask = (ushort)varMask;
+            this.nodeCount = nodeCount;
         }
 
         sealed class Binary : Term
@@ -248,7 +283,7 @@ namespace AlgebraDotNet
             static MethodInfo pow = typeof(Math).GetMethod("Pow", new[] { typeof(double), typeof(double) });
 
             public Binary(TermType type, Term left, Term right)
-                : base(type, Math.Max(left.nextVar, right.nextVar))
+                : base(type, left.varMask | right.varMask, (short)(left.nodeCount + right.nodeCount))
             {
                 this.left = left;
                 this.right = right;
@@ -320,7 +355,7 @@ namespace AlgebraDotNet
         sealed class Const : Term
         {
             internal double value;
-            public Const(double value) : base(TermType.Const, 0)
+            public Const(double value) : base(TermType.Const, 0, 1)
             {
                 this.value = value;
             }
