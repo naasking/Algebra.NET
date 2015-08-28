@@ -13,6 +13,16 @@ namespace AlgebraDotNet
     public static partial class Algebra
     {
         /// <summary>
+        /// The associative identity.
+        /// </summary>
+        public static readonly Identity Associative = Identity((x, y, z) => x + (y + z) == (x + y) + z);
+
+        /// <summary>
+        /// The commutative identity.
+        /// </summary>
+        public static readonly Identity Commutative = Identity((x, y) => x + y == y + x);
+
+        /// <summary>
         /// Exponentiation.
         /// </summary>
         /// <param name="body">The function body.</param>
