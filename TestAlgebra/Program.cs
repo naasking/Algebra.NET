@@ -100,19 +100,19 @@ namespace TestAlgebra
             Identity mulEqAdd = Algebra.Identity(x => 2 * x == x + x);
             Debug.Assert(f.Rewrite() == f);
             Debug.Assert(f.ToString() == "((2 * x) + 1)");
-            Debug.Assert(f.Rewrite(1, associative, mulEqAdd).ToString() == "((x + x) + 1)");
+            Debug.Assert(f.Rewrite(1, associative, mulEqAdd).ToString() == "(1 + (x + x))");
         }
 
         static void Simplify()
         {
             var f = Algebra.Function(x => 1 + x + 1);
-            Identity associative = Algebra.Identity((x, y, z) => (x + y) + z == x + (y + z));
+            Identity associative = Algebra.Identity((x, y, z) => x + (y + z) == (x + y) + z);
             Identity common = Algebra.Identity(x => x + x == 2 * x);
             Identity factor = Algebra.Identity((x, y) => x * y + x == (y + 1) * x);
             Identity commute = Algebra.Identity((x, y) => x + y == y + x);
             Debug.Assert(f.Rewrite() == f);
             Debug.Assert(f.ToString() == "((1 + x) + 1)");
-            Debug.Assert(f.Rewrite(1, common, factor, commute, associative).ToString() == "(x + 2)");
+            Debug.Assert(f.Rewrite(4, common, factor, commute, associative).ToString() == "(x + 2)");
         }
 
         static void Main(string[] args)
@@ -127,7 +127,7 @@ namespace TestAlgebra
             Negate();
             Pow();
             ReadmeSample();
-            //Simplify();
+            Simplify();
 
             Console.WriteLine("Tests complete...");
             Console.ReadLine();
