@@ -88,22 +88,8 @@ namespace AlgebraDotNet
         /// <returns>A new function with the given equalities applied.</returns>
         public Function<T> Rewrite(int rounds, params Identity[] equalities)
         {
-            // rewriting
-            // continue looping until we reach a fixed point, ie. term of last loop == this loop's term
-            Term last, current = Body;
-            // allocate enough space for all possible variables
             var bindings = new Term[Math.Max(HighestBit(Body.varMask), equalities.Max(x => (int?)HighestBit(x.left.varMask)) ?? 0)];
-            do
-            {
-                // apply every equality to rewrite the term
-                last = current;
-                foreach (var e in equalities)
-                {
-                    Array.Clear(bindings, 0, bindings.Length);
-                    current = current.Rewrite(e, bindings);
-                }
-            } while (--rounds > 0 && !ReferenceEquals(last, current));
-            return current;
+            return Term.Rewrite(Body, rounds, equalities, bindings);
         }
 
         /// <summary>
@@ -319,13 +305,16 @@ namespace AlgebraDotNet
                 return left.TryUnify(eb.left, bindings) && right.TryUnify(eb.right, bindings);
             }
 
-            protected internal override Term Rewrite(Identity e, Term[] bindings)
+            protected internal override Term Rewrite(int rounds, Identity[] equalities, Term[] bindings)
             {
-                var nleft = left.Rewrite(e, bindings);
-                var nright = right.Rewrite(e, bindings);
+                // perform all possible rewrites on children before processing the current node
+                var nleft = Rewrite(left, rounds, equalities, bindings);
+                var nright = Rewrite(right, rounds, equalities, bindings);
+                // if any child is new, then simply return because the caller is in a loop
+                // that will invoke Rewrite again because this node is new (essentially tail call)
                 return ReferenceEquals(nleft, left) && ReferenceEquals(nright, right)
-                     ? base.Rewrite(e, bindings)
-                     : nleft.Operation(type, nright).Rewrite(e, bindings);
+                     ? base.Rewrite(rounds, equalities, bindings)
+                     : nleft.Operation(type, nright);
             }
 
             public override bool Equals(Term other)
@@ -409,9 +398,34 @@ namespace AlgebraDotNet
         /// <param name="e"></param>
         /// <param name="bindings"></param>
         /// <returns></returns>
-        internal protected virtual Term Rewrite(Identity e, Term[] bindings)
+        internal protected virtual Term Rewrite(int rounds, Identity[] equalities, Term[] bindings)
         {
-            return e.left.TryUnify(this, bindings) ?  e.right.Subsitute(bindings) : this;
+            //FIXME: when should we clear the bindings?
+            Array.Clear(bindings, 0, bindings.Length);
+            foreach (var e in equalities)
+            {
+                //Array.Clear(bindings, 0, bindings.Length);
+                if (e.left.TryUnify(this, bindings))
+                    return e.right.Subsitute(bindings);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// A loop that continuously rewrites terms until either all rounds are exhausted, or no rewrites succeed.
+        /// </summary>
+        internal protected static Term Rewrite(Term current, int rounds, Identity[] equalities, Term[] bindings)
+        {
+            // continue looping until we reach a fixed point, ie. last loop's term == this loop's term,
+            // or until the allowed rounds are exhausted
+            Term last;
+            do
+            {
+                last = current;
+                //Array.Clear(bindings, 0, bindings.Length);
+                current = current.Rewrite(rounds, equalities, bindings);
+            } while (--rounds > 0 && !ReferenceEquals(last, current));
+            return current;
         }
         #endregion
 
